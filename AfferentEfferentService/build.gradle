@@ -17,10 +17,12 @@ application {
 dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    implementation 'org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r'
 }
 run {
     standardInput = System.in
 }
+
 
 test {
     useJUnitPlatform()

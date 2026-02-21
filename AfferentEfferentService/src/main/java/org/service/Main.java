@@ -1,6 +1,8 @@
 package org.service;
 
 import java.util.Scanner;
+
+import org.github.JGIt;
 import org.github.githubLoginObject;
 
 public class Main {
@@ -20,9 +22,37 @@ public static void welcomeUser(){
     Scanner scanner = new Scanner(System.in);
         System.out.println("Welcome to the Afferent Efferent Service!");
     System.out.println("Please select an option:");
-    System.out.println("1. Check from local files");
+    System.out.println("1. Check from local files (coming soon)");
     System.out.println("2. Check from github");
     int choice = scanner.nextInt();
+
+    switch (choice) {
+        case 1:
+            System.out.println("Please use option 2");
+            break;
+        case 2:
+            System.out.println("Please enter the GitHub repository URL:");
+            String repoUrl = scanner.next();
+            goClone(repoUrl);
+            break;
+        default:
+            System.out.println("Invalid choice. Please select 1 or 2.");
+    }
+
+}
+
+public static void goClone(String s){
+    JGIt jgit = new JGIt(s);
+    String a = jgit.getRepoUrl();
+    if(a == s && s.contains("github.com/")){
+        try {
+            JGIt.getRepoMetadata(s);
+        } catch (Exception e) {
+            System.out.println("Error cloning repository: " + e.getMessage());
+        }
+    } else {
+        System.out.println("Invalid repo URL");
+    }
 
 }
 
