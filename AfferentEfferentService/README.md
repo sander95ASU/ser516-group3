@@ -14,13 +14,16 @@ Team Members:
 
 \###Project Overview:
 
-Group 3 has been tasked with creating services that in sum take a chunk of code and show the number of afferent and efferent couplings over time.
+Group 3 has been tasked with creating services that in sum take a chunk of code and show the number of afferent and efferent couplings on the default branch.
+
+Requirements: Default branch must either be named 'main' or 'master' and is case sensitive. The repository must be public on Github.com. You must know the github repository URL.
 
 
 
 \##Scope of services:
 
-(To be set up later)
+This will take a repository online, clone the repository onto a local machine storage location, iterate through the file system (ignoring nested classes) and keep track of each files Afferent and Efferent Couplings.
+This will not run VIA Docker, but will be run directly through Gradle. The results will be outputted to the console, there is no support for Grafana.
 
 
 
@@ -41,20 +44,15 @@ Group 3 has been tasked with creating services that in sum take a chunk of code 
 \##To use our services
 
 
+\###Running via Gradle directly 
 
-\##Setting up Grafana (to be set up later)
+Load the code base, or access it via your Terminal/CMD/Powershell. First run a 'gradle clean', a 'gradle build', and then a 'gradle run' command. This will execute the service.
 
+1. It will ask you to select a local or github repository, the only choice is Github, selecting local will ask you to choose github.
+2. Enter the URL of the repository you want to analyze.
+3. 3 The service will run, and output the results, on a per file basis, in the console. 
+4. The program then terminates, but can be run indefinetly using step 1. It automatically overwrites previous checks and files every run.
 
-
-\###Running Via Docker (to be set up later)
-
-
-
-\###Running via Gradle directly (To be set up later)
-
-
-
-\###Running tests (to be set up later)
 
 
 

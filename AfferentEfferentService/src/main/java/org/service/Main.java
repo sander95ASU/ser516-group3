@@ -1,15 +1,18 @@
 package org.service;
 
+import java.util.List;
 import java.util.Scanner;
 
-import org.github.JGIt;
-import org.github.githubLoginObject;
+import org.github.CloneObject;
 
 public class Main {
 
+    int Afferent;
+    int Efferent;
 
-    githubLoginObject GLO = new githubLoginObject();
-    public int choice = 1;
+
+    //githubLoginObject GLO = new githubLoginObject();
+    //public int choice = 1;
 
     public static void main(String[] args) {
         welcomeUser();
@@ -42,11 +45,18 @@ public static void welcomeUser(){
 }
 
 public static void goClone(String s){
-    JGIt jgit = new JGIt(s);
+    CloneObject jgit = new CloneObject(s);
     String a = jgit.getRepoUrl();
-    if(a == s && s.contains("github.com/")){
+    if(a.equals(s) && s.contains("github.com/")){
         try {
-            JGIt.getRepoMetadata(s);
+            CloneObject.getRepoMetadata(s);
+            String localPath = CloneObject.cloneRepository(s);
+
+            List<Metrics> results =
+                    Analyzer.analyze(localPath);
+
+
+            results.forEach(System.out::println);
         } catch (Exception e) {
             System.out.println("Error cloning repository: " + e.getMessage());
         }

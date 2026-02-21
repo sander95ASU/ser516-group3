@@ -5,16 +5,19 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
 
 
-public class JGIt {
+public class CloneObject {
 
     //object to get and clone the repo.
 
 String repoUrl;
-String branchName;
+static String branchName;
 
-    public JGIt(String repoUrl) {
+    public CloneObject(String repoUrl) {
         this.repoUrl = repoUrl;
     }
 
@@ -22,33 +25,56 @@ String branchName;
         this.repoUrl = repoUrl;
     }
 
-    public static void cloneRepository(String repoUrl) throws Exception {
+    public static String cloneRepository(String repoUrl) throws Exception {
 
-        File localPath = new File("clonedRepo");
+        File localPath = new File("clonedRepo"); //cloned repo is a hardcoded location, do not change me.
+        Path path = localPath.toPath();
 
+        if (Files.exists(path)) {
+            Files.walk(path)
+                    .sorted(Comparator.reverseOrder())
+                    .map(Path::toFile)
+                    .forEach(File::delete);
+        }
+            localPath.mkdirs();
         Git.cloneRepository()
                 .setURI(repoUrl)
                 .setDirectory(localPath)
-                .setBranch("main")
+                .setBranch(branchName != null ? branchName : "main")
                 .call()
                 .close();
 
         System.out.println("Repo cloned.");
+
+        return localPath.getAbsolutePath();
     }
 
     public static void getRepoMetadata(String repoUrl) throws Exception {
 
         File localPath = new File("tempRepo");
 
-        // Clone repo
+        Path path = localPath.toPath();
+        if (Files.exists(path)) {
+            Files.walk(path)
+                    .sorted(Comparator.reverseOrder())
+                    .map(Path::toFile)
+                    .forEach(File::delete);
+        }
+        localPath.mkdirs();
         Git git = Git.cloneRepository()
                 .setURI(repoUrl)
                 .setDirectory(localPath)
                 .call();
 
         Repository repository = git.getRepository();
-        String branch = repository.findRef("main") != null ? "main" : "master";
-        String branchName = repository.findRef("main") != null ? "main" : "master";
+        String branch;
+        if (repository.findRef("main") != null) {
+            branch = "main";
+            branchName = "main";
+        } else {
+            branch = "master";
+            branchName = "master";
+        }
         git.checkout().setName(branch).call();
         Iterable<RevCommit> commits = git.log().setMaxCount(1).call();
 
