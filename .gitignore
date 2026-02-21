@@ -1,10 +1,10 @@
 .gradle/
 build/
 .gradle-cache/
-!gradlew
-!gradlew.bat
-!gradle/wrapper/gradle-wrapper.jar
-!gradle/wrapper/gradle-wrapper.properties
+!AfferentEfferentService/gradlew
+!AfferentEfferentService/gradlew.bat
+!AfferentEfferentService/gradle/wrapper/gradle-wrapper.jar
+!AfferentEfferentService/gradle/wrapper/gradle-wrapper.properties
 *.class
 *.log
 *.ctxt
