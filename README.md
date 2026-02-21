@@ -40,3 +40,5 @@ It will ask you to select a local or github repository, the only choice is Githu
 Enter the URL of the repository you want to analyze.
 3 The service will run, and output the results, on a per file basis, in the console.
 The program then terminates, but can be run indefinetly using step 1. It automatically overwrites previous checks and files every run.
+
+//
