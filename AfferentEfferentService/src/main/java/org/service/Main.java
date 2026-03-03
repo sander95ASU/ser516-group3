@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Scanner;
 
 import org.github.CloneObject;
+import org.taiga.TaigaClient;
+import org.taiga.TaigaLoginObject;
 
 public class Main {
 
@@ -27,6 +29,7 @@ public static void welcomeUser(){
     System.out.println("Please select an option:");
     System.out.println("1. Check from local files (coming soon)");
     System.out.println("2. Check from github");
+    System.out.println("3. Connect to Taiga");
     int choice = scanner.nextInt();
 
     switch (choice) {
@@ -38,8 +41,11 @@ public static void welcomeUser(){
             String repoUrl = scanner.next();
             goClone(repoUrl);
             break;
+        case 3:
+            goTaiga(scanner);
+            break;
         default:
-            System.out.println("Invalid choice. Please select 1 or 2.");
+            System.out.println("Invalid choice. Please select 1, 2, or 3.");
     }
 
 }
@@ -66,9 +72,60 @@ public static void goClone(String s){
 
 }
 
+public static void goTaiga(Scanner scanner) {
+    System.out.println("Enter your Taiga username:");
+    String username = scanner.next();
+    System.out.println("Enter your Taiga password:");
+    String password = scanner.next();
+
+    TaigaClient taiga = new TaigaClient();
+    TaigaLoginObject loginObj = new TaigaLoginObject(username, password);
+
+    try {
+        boolean loggedIn = taiga.login(loginObj);
+        if (!loggedIn) {
+            System.out.println("Could not log in to Taiga.");
+            return;
+        }
+
+        // if we get here login worked
+        System.out.println("Logged in! Fetching your projects...");
+        String projects = taiga.getProjects(loginObj);
+        System.out.println("Projects: " + projects);
+
+        System.out.println("Enter a project ID to get data for:");
+        int projectId = scanner.nextInt();
+
+        System.out.println("What data do you want?");
+        System.out.println("1. User Stories");
+        System.out.println("2. Tasks");
+        System.out.println("3. Sprints");
+        int dataChoice = scanner.nextInt();
+
+        String data;
+        switch (dataChoice) {
+            case 1:
+                data = taiga.getUserStories(loginObj, projectId);
+                break;
+            case 2:
+                data = taiga.getTasks(loginObj, projectId);
+                break;
+            case 3:
+                data = taiga.getSprints(loginObj, projectId);
+                break;
+            default:
+                System.out.println("Invalid choice.");
+                return;
+        }
+
+        System.out.println(data);
+
+    } catch (Exception e) {
+        System.out.println("Error connecting to Taiga: " + e.getMessage());
+    }
+}
+
 
 
 
 }
-
-
