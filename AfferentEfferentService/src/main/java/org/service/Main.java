@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Scanner;
 
 import org.github.CloneObject;
+import org.taiga.DeliveryMetrics;
 import org.taiga.TaigaClient;
 import org.taiga.TaigaLoginObject;
 
@@ -119,6 +120,16 @@ public static void goTaiga(Scanner scanner) {
         }
 
         System.out.println(data);
+
+        System.out.println("Analyzing delivery metrics for the project...");
+        try {
+            List<DeliveryMetrics> metrics = taiga.getDeliveryMetrics(loginObj, projectId);
+            for (DeliveryMetrics m : metrics) {
+                System.out.println(m);
+            }
+        } catch (Exception e) {
+            System.out.println("Error analyzing delivery: " + e.getMessage());
+        }
 
     } catch (Exception e) {
         System.out.println("Error connecting to Taiga: " + e.getMessage());
