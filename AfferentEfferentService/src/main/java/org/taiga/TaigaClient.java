@@ -57,6 +57,9 @@ public class TaigaClient {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new Exception("Failed to get projects: " + response.statusCode() + " " + response.body());
+        }
         return response.body();
     }
 
@@ -82,6 +85,9 @@ public class TaigaClient {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new Exception("Failed to get project: " + response.statusCode() + " " + response.body());
+        }
         return response.body();
     }
 
@@ -111,6 +117,9 @@ public class TaigaClient {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new Exception("Failed to get user stories: " + response.statusCode() + " " + response.body());
+        }
         return response.body();
     }
 
@@ -122,6 +131,9 @@ public class TaigaClient {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new Exception("Failed to get tasks: " + response.statusCode() + " " + response.body());
+        }
         return response.body();
     }
 
@@ -134,6 +146,9 @@ public class TaigaClient {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new Exception("Failed to get sprints: " + response.statusCode() + " " + response.body());
+        }
         return response.body();
     }
 
@@ -162,6 +177,10 @@ public class TaigaClient {
                     .build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                // skip this sprint if can't get tasks
+                continue;
+            }
             String tasksJson = response.body();
             JSONArray tasks = new JSONArray(tasksJson);
 
@@ -273,8 +292,10 @@ public class TaigaClient {
     }
 
     private String extractString(String json, String key) {
-        String search = "\"" + key + "\":\"";
+        String search = "\"" + key + "\":";
         int start = json.indexOf(search) + search.length();
+        while (start < json.length() && json.charAt(start) == ' ') start++;
+        if (start < json.length() && json.charAt(start) == '"') start++;
         int end = json.indexOf("\"", start);
         return json.substring(start, end);
     }

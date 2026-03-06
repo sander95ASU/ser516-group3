@@ -18,16 +18,12 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     implementation 'org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r'
-<<<<<<< HEAD
-    implementation 'org.json:json:20231013'
-=======
     implementation 'org.json:json:20240303'
->>>>>>> origin/US#39-TaigaAPI
-}
-run {
-    standardInput = System.in
 }
 
+tasks.named('run') {
+    standardInput = System.in
+}
 
 test {
     useJUnitPlatform()
