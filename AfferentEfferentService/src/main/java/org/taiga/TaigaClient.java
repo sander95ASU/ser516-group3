@@ -1,15 +1,17 @@
 package org.taiga;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
+import java.util.Map;
 
 // this class handles all the calls to the taiga API
 public class TaigaClient {
@@ -45,6 +47,7 @@ public class TaigaClient {
         return false;
     }
 
+    // returns the raw projects list, use listProjects() if you want it parsed
     public String getProjects(TaigaLoginObject loginObj) throws Exception {
         // filter by member so we only get projects the user is part of
         HttpRequest request = HttpRequest.newBuilder()
@@ -54,6 +57,49 @@ public class TaigaClient {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        return response.body();
+    }
+
+    // prints a readable list of the users projects with id, name, and slug
+    public void listProjects(TaigaLoginObject loginObj) throws Exception {
+        String body = getProjects(loginObj);
+        JSONArray projects = new JSONArray(body);
+
+        System.out.println("Your projects:");
+        for (int i = 0; i < projects.length(); i++) {
+            JSONObject p = projects.getJSONObject(i);
+            System.out.println("  ID: " + p.getInt("id") +
+                    " | Name: " + p.getString("name") +
+                    " | Slug: " + p.getString("slug"));
+        }
+    }
+
+    public String getProjectById(TaigaLoginObject loginObj, int projectId) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/projects/" + projectId))
+                .header("Authorization", "Bearer " + loginObj.getAuthToken())
+                .GET()
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        return response.body();
+    }
+
+    // look up a project by its slug instead of its id
+    public String getProjectBySlug(TaigaLoginObject loginObj, String slug) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/projects/by_slug?slug=" + slug))
+                .header("Authorization", "Bearer " + loginObj.getAuthToken())
+                .GET()
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            System.out.println("Could not find project with slug: " + slug + " (status " + response.statusCode() + ")");
+            return null;
+        }
+
         return response.body();
     }
 
@@ -146,6 +192,84 @@ public class TaigaClient {
             metrics.add(new DeliveryMetrics(name, total, onTime, late));
         }
         return metrics;
+    }
+
+    // gets all the data for a project and structures it so we can see it over time
+    // basically a java version of the python get_structure function
+    public TaigaProject getStructure(TaigaLoginObject loginObj, int projectId) throws Exception {
+
+        // grab everything we need from the API
+        String projectBody = getProjectById(loginObj, projectId);
+        String sprintsBody = getSprints(loginObj, projectId);
+        String userStoriesBody = getUserStories(loginObj, projectId);
+        String tasksBody = getTasks(loginObj, projectId);
+
+        JSONObject projectJson = new JSONObject(projectBody);
+        JSONArray sprintsJson = new JSONArray(sprintsBody);
+        JSONArray userStoriesJson = new JSONArray(userStoriesBody);
+        JSONArray tasksJson = new JSONArray(tasksBody);
+
+        // group tasks by user story id
+        Map<Integer, List<TaigaProject.Task>> tasksByStory = new HashMap<>();
+        for (int i = 0; i < tasksJson.length(); i++) {
+            JSONObject taskJson = tasksJson.getJSONObject(i);
+
+            // user_story can be null if the task isn't assigned to a story
+            if (taskJson.isNull("user_story")) continue;
+
+            int usId = taskJson.getInt("user_story");
+            if (!tasksByStory.containsKey(usId)) {
+                tasksByStory.put(usId, new ArrayList<>());
+            }
+
+            TaigaProject.Task task = new TaigaProject.Task();
+            task.id = taskJson.getInt("id");
+            task.name = taskJson.getString("subject");
+            task.createdDate = taskJson.getString("created_date");
+            tasksByStory.get(usId).add(task);
+        }
+
+        // group user stories by sprint id
+        // milestone in taiga = sprint, milestone can also be null for backlog stories
+        Map<Integer, List<TaigaProject.UserStory>> storiesBySprint = new HashMap<>();
+        for (int i = 0; i < userStoriesJson.length(); i++) {
+            JSONObject usJson = userStoriesJson.getJSONObject(i);
+
+            if (usJson.isNull("milestone")) continue;
+
+            int sprintId = usJson.getInt("milestone");
+            if (!storiesBySprint.containsKey(sprintId)) {
+                storiesBySprint.put(sprintId, new ArrayList<>());
+            }
+
+            TaigaProject.UserStory us = new TaigaProject.UserStory();
+            us.id = usJson.getInt("id");
+            us.name = usJson.getString("subject");
+            us.createdDate = usJson.getString("created_date");
+            us.tasks = tasksByStory.getOrDefault(us.id, new ArrayList<>());
+            storiesBySprint.get(sprintId).add(us);
+        }
+
+        // build the final project object
+        TaigaProject project = new TaigaProject();
+        project.projectName = projectJson.getString("name");
+        project.projectId = projectJson.getInt("id");
+        project.createdDate = projectJson.getString("created_date");
+
+        // put sprints in, each sprint has its user stories and tasks inside
+        for (int i = 0; i < sprintsJson.length(); i++) {
+            JSONObject sprintJson = sprintsJson.getJSONObject(i);
+
+            TaigaProject.Sprint sprint = new TaigaProject.Sprint();
+            sprint.id = sprintJson.getInt("id");
+            sprint.name = sprintJson.getString("name");
+            sprint.startDate = sprintJson.optString("estimated_start", "N/A");
+            sprint.finishDate = sprintJson.optString("estimated_finish", "N/A");
+            sprint.userStories = storiesBySprint.getOrDefault(sprint.id, new ArrayList<>());
+            project.sprints.add(sprint);
+        }
+
+        return project;
     }
 
     private String extractString(String json, String key) {

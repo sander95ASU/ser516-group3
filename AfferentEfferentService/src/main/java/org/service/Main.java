@@ -5,8 +5,10 @@ import java.util.Scanner;
 
 import org.github.CloneObject;
 import org.taiga.DeliveryMetrics;
+import org.json.JSONObject;
 import org.taiga.TaigaClient;
 import org.taiga.TaigaLoginObject;
+import org.taiga.TaigaProject;
 
 public class Main {
 
@@ -90,36 +92,28 @@ public static void goTaiga(Scanner scanner) {
         }
 
         // if we get here login worked
-        System.out.println("Logged in! Fetching your projects...");
-        String projects = taiga.getProjects(loginObj);
-        System.out.println("Projects: " + projects);
+        System.out.println("Logged in!");
+        taiga.listProjects(loginObj);
 
-        System.out.println("Enter a project ID to get data for:");
-        int projectId = scanner.nextInt();
+        // let the user pick by id or slug since both are shown in the list
+        System.out.println("Enter a project ID or slug:");
+        String input = scanner.next();
 
-        System.out.println("What data do you want?");
-        System.out.println("1. User Stories");
-        System.out.println("2. Tasks");
-        System.out.println("3. Sprints");
-        int dataChoice = scanner.nextInt();
-
-        String data;
-        switch (dataChoice) {
-            case 1:
-                data = taiga.getUserStories(loginObj, projectId);
-                break;
-            case 2:
-                data = taiga.getTasks(loginObj, projectId);
-                break;
-            case 3:
-                data = taiga.getSprints(loginObj, projectId);
-                break;
-            default:
-                System.out.println("Invalid choice.");
-                return;
+        int projectId;
+        try {
+            // if it parses as a number, treat it as an id
+            projectId = Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+            // otherwise look it up by slug
+            System.out.println("Looking up project by slug: " + input);
+            String projectBody = taiga.getProjectBySlug(loginObj, input);
+            if (projectBody == null) return;
+            projectId = new JSONObject(projectBody).getInt("id");
         }
 
-        System.out.println(data);
+        // get the full structure with sprints, user stories, and tasks all parsed out
+        TaigaProject project = taiga.getStructure(loginObj, projectId);
+        project.printStructure();
 
         System.out.println("Analyzing delivery metrics for the project...");
         try {
