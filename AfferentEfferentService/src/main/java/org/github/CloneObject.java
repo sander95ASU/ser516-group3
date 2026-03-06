@@ -27,8 +27,8 @@ static String branchName;
 
     public static String cloneRepository(String repoUrl) throws Exception {
 
-        File localPath = new File("clonedRepo"); //cloned repo is a hardcoded location, do not change me.
-        Path path = localPath.toPath();
+        Path path = org.service.StorageConfig.getClonePath(); // changed to improve storage
+        File localPath = path.toFile();
 
         if (Files.exists(path)) {
             Files.walk(path)
@@ -51,9 +51,8 @@ static String branchName;
 
     public static void getRepoMetadata(String repoUrl) throws Exception {
 
-        File localPath = new File("tempRepo");
-
-        Path path = localPath.toPath();
+    Path path = org.service.StorageConfig.getTempPath(); // configurable storage path for temp repo
+    File localPath = path.toFile();
         if (Files.exists(path)) {
             Files.walk(path)
                     .sorted(Comparator.reverseOrder())
