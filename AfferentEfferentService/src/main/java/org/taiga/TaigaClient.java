@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 // this class handles all the calls to the taiga API
 public class TaigaClient {
@@ -289,6 +290,87 @@ public class TaigaClient {
         }
 
         return project;
+    }
+
+    // returns cruft ratio for each sprint in the project
+    public List<CruftMetrics> getCruftMetrics(TaigaLoginObject loginObj, int projectId) throws Exception {
+        List<CruftMetrics> results = new ArrayList<>();
+        String sprintsJson = getSprints(loginObj, projectId);
+        JSONArray sprints = new JSONArray(sprintsJson);
+
+        for (int i = 0; i < sprints.length(); i++) {
+            JSONObject sprint = sprints.getJSONObject(i);
+            int sprintId = sprint.getInt("id");
+            String sprintName = sprint.getString("name");
+            String startDate = sprint.optString("estimated_start", "N/A");
+            String endDate = sprint.optString("estimated_finish", "N/A");
+
+            // fetch user stories assigned to sprint
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/userstories?project=" + projectId + "&milestone=" + sprintId))
+                    .header("Authorization", "Bearer " + loginObj.getAuthToken())
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                // skip sprint if stories can't be retrieved
+                continue;
+            }
+
+            JSONArray stories = new JSONArray(response.body());
+            int total = stories.length();
+            int cruftCount = 0;
+
+            for (int j = 0; j < stories.length(); j++) {
+                if (isCruft(stories.getJSONObject(j))) {
+                    cruftCount++;
+                }
+            }
+
+            double cruftPct = total == 0 ? 0.0 : (cruftCount * 100.0 / total);
+            results.add(new CruftMetrics(sprintName, startDate, endDate, total, cruftCount, cruftPct));
+        }
+
+        return results;
+    }
+
+    private boolean isCruft(JSONObject story) {
+        // tags that signal zero value or technical debt work
+        Set<String> CRUFT_TAGS = Set.of(
+                "bug", "tech-debt", "technical-debt", "tech_debt", "technical_debt",
+                "refactor", "refactoring", "infrastructure", "infra",
+                "chore", "maintenance", "cleanup", "debt", "fix"
+        );
+
+        // tag based detection
+        // taiga stores tags as an array of [name, color] pairs
+        if (story.has("tags") && !story.isNull("tags")) {
+            JSONArray tags = story.getJSONArray("tags");
+            for (int i = 0; i < tags.length(); i++) {
+                Object tagEntry = tags.get(i);
+                String tagName = "";
+                if (tagEntry instanceof JSONArray) {
+                    tagName = ((JSONArray) tagEntry).optString(0, "").toLowerCase().trim();
+                } else if (tagEntry instanceof String) {
+                    tagName = ((String) tagEntry).toLowerCase().trim();
+                }
+                if (CRUFT_TAGS.contains(tagName)) {
+                    return true;
+                }
+            }
+        }
+
+        // point based detection (zero or unestimated = no business value)
+        if (!story.has("total_points") || story.isNull("total_points")) {
+            return true;
+        }
+        double points = story.optDouble("total_points", -1);
+        if (points == 0.0) {
+            return true;
+        }
+
+        return false;
     }
 
     private String extractString(String json, String key) {
