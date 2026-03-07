@@ -10,7 +10,7 @@ COPY build.gradle ./
 RUN echo "rootProject.name = 'app'" > settings.gradle
 RUN chmod +x gradlew && ./gradlew dependencies --no-daemon
 COPY src ./src
-RUN ./gradlew jar --no-daemon -x test
+RUN ./gradlew shadowJar --no-daemon -x test
 
 # Run stage
 FROM eclipse-temurin:21-jre-alpine
