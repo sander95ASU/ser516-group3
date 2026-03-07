@@ -14,6 +14,12 @@ application {
     mainClass = 'org.service.Main'
 }
 
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.service.Main'
+    }
+}
+
 dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -24,6 +30,6 @@ run {
 }
 
 
-test {
-    useJUnitPlatform()
-}
+//test {
+//    useJUnitPlatform()
+//}
