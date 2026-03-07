@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,6 +57,9 @@ public class TaigaClient {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new Exception("Failed to get projects: " + response.statusCode() + " " + response.body());
+        }
         return response.body();
     }
 
@@ -81,6 +85,9 @@ public class TaigaClient {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new Exception("Failed to get project: " + response.statusCode() + " " + response.body());
+        }
         return response.body();
     }
 
@@ -110,6 +117,9 @@ public class TaigaClient {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new Exception("Failed to get user stories: " + response.statusCode() + " " + response.body());
+        }
         return response.body();
     }
 
@@ -121,6 +131,9 @@ public class TaigaClient {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new Exception("Failed to get tasks: " + response.statusCode() + " " + response.body());
+        }
         return response.body();
     }
 
@@ -133,7 +146,71 @@ public class TaigaClient {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new Exception("Failed to get sprints: " + response.statusCode() + " " + response.body());
+        }
         return response.body();
+    }
+
+    public List<DeliveryMetrics> getDeliveryMetrics(TaigaLoginObject loginObj, int projectId) throws Exception {
+        List<DeliveryMetrics> metrics = new ArrayList<>();
+        String sprintsJson = getSprints(loginObj, projectId);
+        JSONArray sprints = new JSONArray(sprintsJson);
+        for (int i = 0; i < sprints.length(); i++) {
+            JSONObject sprint = sprints.getJSONObject(i);
+            String name = sprint.getString("name");
+            if (!sprint.has("estimated_finish") || sprint.isNull("estimated_finish")) continue;
+            String endDateStr = sprint.getString("estimated_finish");
+            LocalDate endDate;
+            try {
+                endDate = LocalDate.parse(endDateStr.substring(0, 10));
+            } catch (Exception e) {
+                continue;
+            }
+            int sprintId = sprint.getInt("id");
+
+            // get tasks for this sprint
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/tasks?project=" + projectId + "&milestone=" + sprintId))
+                    .header("Authorization", "Bearer " + loginObj.getAuthToken())
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                // skip this sprint if can't get tasks
+                continue;
+            }
+            String tasksJson = response.body();
+            JSONArray tasks = new JSONArray(tasksJson);
+
+            int total = 0;
+            int onTime = 0;
+            for (int j = 0; j < tasks.length(); j++) {
+                JSONObject task = tasks.getJSONObject(j);
+                total++;
+                if (task.has("status_extra_info")) {
+                    JSONObject statusInfo = task.getJSONObject("status_extra_info");
+                    String status = statusInfo.getString("name");
+                    if ("Closed".equals(status) || "Done".equals(status)) {
+                        if (task.has("finished_date") && !task.isNull("finished_date")) {
+                            String finishDateStr = task.getString("finished_date");
+                            try {
+                                LocalDate finishDate = LocalDate.parse(finishDateStr.substring(0, 10));
+                                if (!finishDate.isAfter(endDate)) {
+                                    onTime++;
+                                }
+                            } catch (Exception e) {
+                                // consider late
+                            }
+                        }
+                    }
+                }
+            }
+            int late = total - onTime;
+            metrics.add(new DeliveryMetrics(name, total, onTime, late));
+        }
+        return metrics;
     }
 
     // gets all the data for a project and structures it so we can see it over time
@@ -215,8 +292,10 @@ public class TaigaClient {
     }
 
     private String extractString(String json, String key) {
-        String search = "\"" + key + "\":\"";
+        String search = "\"" + key + "\":";
         int start = json.indexOf(search) + search.length();
+        while (start < json.length() && json.charAt(start) == ' ') start++;
+        if (start < json.length() && json.charAt(start) == '"') start++;
         int end = json.indexOf("\"", start);
         return json.substring(start, end);
     }

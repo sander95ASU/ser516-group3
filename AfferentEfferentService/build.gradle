@@ -20,10 +20,10 @@ dependencies {
     implementation 'org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r'
     implementation 'org.json:json:20240303'
 }
-run {
+
+tasks.named('run') {
     standardInput = System.in
 }
-
 
 test {
     useJUnitPlatform()
