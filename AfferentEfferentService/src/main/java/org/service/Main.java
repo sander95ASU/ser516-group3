@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Scanner;
 
 import org.github.CloneObject;
+import org.taiga.CruftMetrics;
+import org.taiga.DeliveryMetrics;
 import org.json.JSONObject;
 import org.taiga.TaigaClient;
 import org.taiga.TaigaLoginObject;
@@ -113,6 +115,40 @@ public static void goTaiga(Scanner scanner) {
         // get the full structure with sprints, user stories, and tasks all parsed out
         TaigaProject project = taiga.getStructure(loginObj, projectId);
         project.printStructure();
+
+        System.out.println("Analyzing delivery metrics for the project...");
+        try {
+            List<DeliveryMetrics> metrics = taiga.getDeliveryMetrics(loginObj, projectId);
+            for (DeliveryMetrics m : metrics) {
+                System.out.println(m);
+            }
+        } catch (Exception e) {
+            System.out.println("Error analyzing delivery: " + e.getMessage());
+        }
+
+        // --- Cruft metric (user story #40 / tasks #54 & #55) ---
+        // Cruft = % of stories representing zero-value (technical debt) work.
+        // Shown per sprint so the caller can see how cruft evolves over time.
+        System.out.println("\nAnalyzing cruft metrics for the project...");
+        try {
+            List<CruftMetrics> cruftList = taiga.getCruftMetrics(loginObj, projectId);
+            if (cruftList.isEmpty()) {
+                System.out.println("No sprint data found for cruft analysis.");
+            } else {
+                double totalStories = 0;
+                double totalCruft = 0;
+                for (CruftMetrics c : cruftList) {
+                    System.out.println(c);
+                    totalStories += c.totalStories();
+                    totalCruft += c.cruftStories();
+                }
+                double overallCruftPct = totalStories == 0 ? 0.0 : (totalCruft / totalStories * 100.0);
+                System.out.printf("%nOverall cruft across all sprints: %.1f%% (%d / %d stories)%n",
+                        overallCruftPct, (int) totalCruft, (int) totalStories);
+            }
+        } catch (Exception e) {
+            System.out.println("Error analyzing cruft: " + e.getMessage());
+        }
 
     } catch (Exception e) {
         System.out.println("Error connecting to Taiga: " + e.getMessage());

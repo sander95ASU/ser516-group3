@@ -23,4 +23,7 @@ public class StorageConfig {
         return getStorageRoot().resolve("temp").resolve("tempRepo");
     }
 
+    public static Path getProcessedPath() {
+        return getStorageRoot().resolve("processed");
+    }
 }
